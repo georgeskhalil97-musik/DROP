@@ -161,6 +161,7 @@
   }
   .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(35,229,224,0.25); }
   .btn:active { transform: translateY(0); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 
   .hint {
     font-size: 13px;
@@ -391,6 +392,7 @@
   chaque téléchargement redirige vers le lien officiel proposé par l'artiste sur SoundCloud.
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
 let currentTracks = [];
 
@@ -500,10 +502,54 @@ async function downloadAll() {
     alert('Aucune track en free download dans cette playlist.');
     return;
   }
-  for (const t of freeTracks) {
-    await downloadTrack(t.id);
-    await new Promise(r => setTimeout(r, 300));
+
+  const btn = document.querySelector('.bulk-bar .btn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+
+  const zip = new JSZip();
+  let failed = 0;
+
+  for (let i = 0; i < freeTracks.length; i++) {
+    const t = freeTracks[i];
+    btn.textContent = `Préparation… (${i + 1}/${freeTracks.length})`;
+    try {
+      const response = await fetch(`/api/download?id=${t.id}`);
+      if (!response.ok) { failed++; continue; }
+      const blob = await response.blob();
+      const ext = blob.type.includes('wav') ? 'wav'
+        : (blob.type.includes('mpeg') || blob.type.includes('mp3')) ? 'mp3'
+        : blob.type.includes('flac') ? 'flac'
+        : 'mp3';
+      const label = sanitizeFilename(`${t.artist} - ${t.title}`);
+      zip.file(`${label}.${ext}`, blob);
+    } catch (err) {
+      failed++;
+    }
   }
+
+  btn.textContent = 'Compression du zip…';
+
+  try {
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    const objectUrl = window.URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = 'drop-tracks.zip';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(objectUrl);
+  } catch (err) {
+    alert(`Erreur lors de la création du zip : ${err.message}`);
+  }
+
+  if (failed > 0) {
+    alert(`${failed} track(s) n'ont pas pu être téléchargées et ont été ignorées.`);
+  }
+
+  btn.disabled = false;
+  btn.textContent = originalLabel;
 }
 renderTracks();
 
