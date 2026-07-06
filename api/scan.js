@@ -1,4 +1,4 @@
-const { getAccessToken, soundcloudFetch } = require("./_soundcloud");
+const { getAppAccessToken, soundcloudFetch, parseCookies } = require("./_soundcloud");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,9 +10,11 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const accessToken = await getAccessToken();
+    const cookies = parseCookies(req);
+    // Si l'utilisateur est connecté, on utilise SON token (accès à ses playlists
+    // privées incluses). Sinon on retombe sur le token app (playlists publiques uniquement).
+    const accessToken = cookies.sc_user_token || (await getAppAccessToken());
 
-    // Étape 1 — résoudre l'URL (playlist ou profil) en ressource API.
     const resolveRes = await soundcloudFetch(
       `/resolve?url=${encodeURIComponent(url)}`,
       accessToken
@@ -20,8 +22,11 @@ module.exports = async (req, res) => {
 
     if (!resolveRes.ok) {
       const errText = await resolveRes.text();
+      const isPrivate = resolveRes.status === 401 || resolveRes.status === 403;
       res.status(resolveRes.status).json({
-        error: "Impossible de résoudre cette URL SoundCloud.",
+        error: isPrivate && !cookies.sc_user_token
+          ? "Cette playlist semble privée. Connecte-toi avec SoundCloud pour accéder à tes propres playlists privées."
+          : "Impossible de résoudre cette URL SoundCloud.",
         details: errText,
       });
       return;
@@ -29,7 +34,6 @@ module.exports = async (req, res) => {
 
     const resource = await resolveRes.json();
 
-    // Le lien peut pointer vers une playlist (kind: "playlist") ou un profil (kind: "user").
     let rawTracks = [];
 
     if (resource.kind === "playlist") {
@@ -50,8 +54,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // Certaines playlists volumineuses ne renvoient que des tracks "partiels"
-    // (juste l'id). On complète les infos manquantes en une seule requête groupée.
     const incompleteIds = rawTracks
       .filter((t) => !t.title && t.id)
       .map((t) => t.id);
