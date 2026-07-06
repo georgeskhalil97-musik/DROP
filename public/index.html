@@ -337,9 +337,12 @@
     </svg>
     <span class="wordmark">DROP</span>
   </div>
-  <div class="credit-pill">
-    <span class="dot"></span>
-    <span class="full">Gratuit pour DJ · créé par <b>chechemusik</b></span>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <a href="/api/login" id="loginBtn" style="font-size:12.5px; color:var(--cyan); text-decoration:none; border:1px solid var(--line); padding:7px 14px; border-radius:100px;">Se connecter avec SoundCloud</a>
+    <div class="credit-pill">
+      <span class="dot"></span>
+      <span class="full">Gratuit pour DJ · créé par <b>chechemusik</b></span>
+    </div>
   </div>
 </header>
 
@@ -360,13 +363,13 @@
   <section class="results" id="results">
     <div class="results-head">
       <h2>Playlist scannée</h2>
-      <span class="count"><b id="freeCount">6</b>/9 en free download</span>
+      <span class="count"><b id="freeCount">0</b>/<span id="totalCount">0</span> en free download</span>
     </div>
 
     <div id="trackList"></div>
 
     <div class="bulk-bar">
-      <p><b id="freeCount2">6</b> tracks disponibles au téléchargement</p>
+      <p><b id="freeCount2">0</b> tracks disponibles au téléchargement</p>
       <button class="btn" onclick="downloadAll()">Tout télécharger (.zip)</button>
     </div>
     <p class="format-note">Chaque track est téléchargée dans le format original mis en ligne par l'artiste sur SoundCloud — aucune conversion, aucune compression supplémentaire.</p>
@@ -395,8 +398,8 @@ function renderTracks() {
   const list = document.getElementById('trackList');
   if (currentTracks.length === 0) {
     list.innerHTML = '<p style="color:var(--ink-faint); font-size:13px; padding:20px 0;">Colle une playlist SoundCloud ci-dessus et clique sur "Scanner" pour voir les tracks.</p>';
-    document.getElementById('freeCount').textContent = '0';
     document.getElementById('freeCount2').textContent = '0';
+    document.querySelector('.results-head .count').innerHTML = '<b id="freeCount">0</b>/0 en free download';
     return;
   }
 
@@ -471,8 +474,29 @@ function downloadAll() {
     setTimeout(() => downloadTrack(t.id), i * 400);
   });
 }
-
 renderTracks();
+
+// Gère le retour de connexion SoundCloud (paramètres dans l'URL après redirection)
+(function handleLoginState() {
+  const params = new URLSearchParams(window.location.search);
+  const loginBtn = document.getElementById('loginBtn');
+
+  if (params.get('connected') === '1') {
+    loginBtn.textContent = '✓ Connecté à SoundCloud';
+    loginBtn.style.color = 'var(--ink)';
+    loginBtn.style.borderColor = 'var(--cyan)';
+    loginBtn.removeAttribute('href');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  const loginError = params.get('login_error');
+  if (loginError) {
+    const list = document.getElementById('trackList');
+    list.innerHTML = `<p style="color:var(--red); font-size:13px; padding:20px 0;">Connexion SoundCloud échouée : ${loginError}</p>`;
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+})();
+
 </script>
 
 </body>
