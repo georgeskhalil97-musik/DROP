@@ -1,4 +1,4 @@
-const { getAccessToken } = require("./_soundcloud");
+const { getAppAccessToken, parseCookies } = require("./_soundcloud");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,7 +10,8 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const accessToken = await getAccessToken();
+    const cookies = parseCookies(req);
+    const accessToken = cookies.sc_user_token || (await getAppAccessToken());
 
     const downloadRes = await fetch(
       `https://api.soundcloud.com/tracks/${trackId}/download`,
@@ -30,15 +31,35 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const data = await downloadRes.json();
+    const contentType = downloadRes.headers.get("content-type") || "";
 
-    // La réponse contient un lien de redirection direct vers le fichier original.
-    if (data.redirectUri) {
-      res.redirect(302, data.redirectUri);
+    // Cas 1 — SoundCloud renvoie du JSON avec un lien de redirection vers le fichier.
+    if (contentType.includes("application/json")) {
+      const data = await downloadRes.json();
+      if (data.redirectUri) {
+        res.redirect(302, data.redirectUri);
+        return;
+      }
+      res.status(200).json(data);
       return;
     }
 
-    res.status(200).json(data);
+    // Cas 2 — SoundCloud renvoie directement le fichier audio brut (WAV, MP3, etc.).
+    // On le retransmet tel quel, avec les bons en-têtes pour déclencher un vrai téléchargement.
+    const arrayBuffer = await downloadRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const extension = contentType.includes("wav")
+      ? "wav"
+      : contentType.includes("mpeg") || contentType.includes("mp3")
+      ? "mp3"
+      : contentType.includes("flac")
+      ? "flac"
+      : "audio";
+
+    res.setHeader("Content-Type", contentType || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename="track-${trackId}.${extension}"`);
+    res.status(200).send(buffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
