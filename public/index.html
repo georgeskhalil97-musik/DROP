@@ -438,15 +438,19 @@ async function scan() {
     const data = await response.json();
 
     if (!response.ok) {
+      resultsSection.style.opacity = '1';
       list.innerHTML = `<p style="color:var(--red); font-size:13px; padding:20px 0;">${data.error || "Erreur lors du scan."}</p>`;
       currentTracks = [];
-    } else {
-      currentTracks = data.tracks || [];
-      document.querySelector('.results-head h2').textContent = data.playlistTitle || 'Playlist scannée';
+      return;
     }
+
+    currentTracks = data.tracks || [];
+    document.querySelector('.results-head h2').textContent = data.playlistTitle || 'Playlist scannée';
   } catch (err) {
+    resultsSection.style.opacity = '1';
     list.innerHTML = `<p style="color:var(--red); font-size:13px; padding:20px 0;">Erreur réseau : ${err.message}</p>`;
     currentTracks = [];
+    return;
   }
 
   resultsSection.style.opacity = '1';
