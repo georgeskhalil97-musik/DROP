@@ -460,19 +460,50 @@ async function scan() {
   renderTracks();
 }
 
-function downloadTrack(id) {
-  window.open(`/api/download?id=${id}`, '_blank');
+function sanitizeFilename(str) {
+  return str.replace(/[\\/:*?"<>|]+/g, '').trim();
 }
 
-function downloadAll() {
+async function downloadTrack(id) {
+  const track = currentTracks.find(t => String(t.id) === String(id));
+  const label = track ? sanitizeFilename(`${track.artist} - ${track.title}`) : `track-${id}`;
+
+  try {
+    const response = await fetch(`/api/download?id=${id}`);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      alert(data.error || 'Échec du téléchargement.');
+      return;
+    }
+    const blob = await response.blob();
+    const ext = blob.type.includes('wav') ? 'wav'
+      : (blob.type.includes('mpeg') || blob.type.includes('mp3')) ? 'mp3'
+      : blob.type.includes('flac') ? 'flac'
+      : 'mp3';
+
+    const objectUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = `${label}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(objectUrl);
+  } catch (err) {
+    alert(`Erreur de téléchargement : ${err.message}`);
+  }
+}
+
+async function downloadAll() {
   const freeTracks = currentTracks.filter(t => t.free);
   if (freeTracks.length === 0) {
     alert('Aucune track en free download dans cette playlist.');
     return;
   }
-  freeTracks.forEach((t, i) => {
-    setTimeout(() => downloadTrack(t.id), i * 400);
-  });
+  for (const t of freeTracks) {
+    await downloadTrack(t.id);
+    await new Promise(r => setTimeout(r, 300));
+  }
 }
 renderTracks();
 
