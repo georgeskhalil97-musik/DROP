@@ -68,13 +68,34 @@ module.exports = async (req, res) => {
       }
     }
 
+    function detectExternalPlatform(purchaseUrl) {
+      if (!purchaseUrl) return null;
+      let hostname = "";
+      try {
+        hostname = new URL(purchaseUrl).hostname.replace(/^www\./, "");
+      } catch {
+        return null;
+      }
+      if (hostname.includes("hypeddit.com")) return "Hypeddit";
+      if (hostname.includes("bandcamp.com")) return "Bandcamp";
+      if (hostname.includes("toneden.io")) return "Toneden";
+      if (hostname.includes("fanlink") || hostname.includes("linkfire.com") || hostname.includes("feature.fm")) return "Lien externe";
+      return "Lien externe";
+    }
+
     const tracks = rawTracks.map((t) => {
       const full = fullTracksById[t.id] || t;
+      const nativelyFree = Boolean(full.downloadable);
+      const purchaseUrl = full.purchase_url || null;
+      const externalPlatform = !nativelyFree ? detectExternalPlatform(purchaseUrl) : null;
+
       return {
         id: full.id,
         title: full.title || "Titre indisponible",
         artist: full.user?.username || "Artiste inconnu",
-        free: Boolean(full.downloadable),
+        free: nativelyFree,
+        externalPlatform, // ex: "Hypeddit", "Bandcamp", ou null
+        externalUrl: externalPlatform ? purchaseUrl : null,
         permalink: full.permalink_url,
       };
     });
