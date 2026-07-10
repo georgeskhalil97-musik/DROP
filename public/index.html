@@ -239,6 +239,15 @@
   }
   .badge-free { background: var(--cyan-dim); color: var(--cyan); }
   .badge-locked { background: var(--bg-raised-2); color: var(--ink-faint); }
+  .badge-hypeddit { background: rgba(255,59,92,0.14); color: var(--red); }
+  .badge-bandcamp { background: rgba(23,163,177,0.16); color: #4fd6e6; }
+  .badge-external { background: rgba(255,255,255,0.08); color: var(--ink-dim); }
+
+  .dl-btn.ext-btn {
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .dl-btn.ext-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--ink-dim); }
 
   .dl-btn {
     background: transparent;
@@ -406,7 +415,24 @@ function renderTracks() {
   }
 
   list.innerHTML = currentTracks.map((t, i) => {
-    const title = t.free ? "Télécharger cette track" : "Non proposée en free download par l'artiste";
+    let badgeClass, badgeLabel, buttonHtml;
+
+    if (t.free) {
+      badgeClass = 'badge-free';
+      badgeLabel = 'Free DL';
+      buttonHtml = `<button class="dl-btn" title="Télécharger cette track" onclick="downloadTrack('${t.id}')">↓</button>`;
+    } else if (t.externalPlatform) {
+      badgeClass = t.externalPlatform === 'Hypeddit' ? 'badge-hypeddit'
+        : t.externalPlatform === 'Bandcamp' ? 'badge-bandcamp'
+        : 'badge-external';
+      badgeLabel = `${t.externalPlatform} · Gratuit`;
+      buttonHtml = `<a class="dl-btn ext-btn" href="${t.externalUrl}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${t.externalPlatform}">↗</a>`;
+    } else {
+      badgeClass = 'badge-locked';
+      badgeLabel = 'Verrouillé';
+      buttonHtml = `<button class="dl-btn" disabled title="Non proposée en free download par l'artiste">🔒</button>`;
+    }
+
     return `
     <div class="track">
       <span class="track-num">${String(i+1).padStart(2,'0')}</span>
@@ -415,10 +441,8 @@ function renderTracks() {
         <div class="track-title">${t.title}</div>
         <div class="track-artist">${t.artist}</div>
       </div>
-      <span class="track-badge ${t.free ? 'badge-free' : 'badge-locked'}">${t.free ? 'Free DL' : 'Verrouillé'}</span>
-      <button class="dl-btn" ${t.free ? '' : 'disabled'} title="${title}" onclick="downloadTrack('${t.id}')">
-        ${t.free ? '↓' : '🔒'}
-      </button>
+      <span class="track-badge ${badgeClass}">${badgeLabel}</span>
+      ${buttonHtml}
     </div>`;
   }).join('');
 
