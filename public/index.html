@@ -198,7 +198,14 @@
     gap: 14px;
     padding: 14px 0;
     border-bottom: 1px solid var(--line-soft);
+    cursor: pointer;
+    transition: background 0.12s ease;
+    margin: 0 -12px;
+    padding-left: 12px;
+    padding-right: 12px;
+    border-radius: 6px;
   }
+  .track:hover { background: var(--bg-raised); }
 
   .track-num {
     font-family: 'JetBrains Mono', monospace;
@@ -420,13 +427,13 @@ function renderTracks() {
     if (t.free) {
       badgeClass = 'badge-free';
       badgeLabel = 'Free DL';
-      buttonHtml = `<button class="dl-btn" title="Télécharger cette track" onclick="downloadTrack('${t.id}')">↓</button>`;
+      buttonHtml = `<button class="dl-btn" title="Télécharger cette track" onclick="event.stopPropagation(); downloadTrack('${t.id}')">↓</button>`;
     } else if (t.externalPlatform) {
       badgeClass = t.externalPlatform === 'Hypeddit' ? 'badge-hypeddit'
         : t.externalPlatform === 'Bandcamp' ? 'badge-bandcamp'
         : 'badge-external';
       badgeLabel = t.externalConfirmedFree ? `${t.externalPlatform} · Gratuit` : t.externalPlatform;
-      buttonHtml = `<a class="dl-btn ext-btn" href="${t.externalUrl}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${t.externalPlatform}">↗</a>`;
+      buttonHtml = `<a class="dl-btn ext-btn" href="${t.externalUrl}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${t.externalPlatform}" onclick="event.stopPropagation()">↗</a>`;
     } else {
       badgeClass = 'badge-locked';
       badgeLabel = 'Verrouillé';
@@ -434,7 +441,7 @@ function renderTracks() {
     }
 
     return `
-    <div class="track">
+    <div class="track" onclick="window.open('${t.permalink}', '_blank')" title="Ouvrir sur SoundCloud">
       <span class="track-num">${String(i+1).padStart(2,'0')}</span>
       <div class="wave"><span></span><span></span><span></span><span></span><span></span></div>
       <div class="track-info">
