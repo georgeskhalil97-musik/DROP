@@ -25,8 +25,8 @@ module.exports = async (req, res) => {
       const isPrivate = resolveRes.status === 401 || resolveRes.status === 403;
       res.status(resolveRes.status).json({
         error: isPrivate && !cookies.sc_user_token
-          ? "Cette playlist semble privée. Connecte-toi avec SoundCloud pour accéder à tes propres playlists privées."
-          : "Impossible de résoudre cette URL SoundCloud.",
+          ? "Cette playlist est privée. Connecte-toi avec SoundCloud (bouton en haut à droite) pour pouvoir la scanner."
+          : "Impossible de résoudre cette URL SoundCloud. Vérifie que le lien est correct.",
         details: errText,
       });
       return;
@@ -76,11 +76,12 @@ module.exports = async (req, res) => {
       } catch {
         return null;
       }
-      if (hostname.includes("hypeddit.com")) return "Hypeddit";
-      if (hostname.includes("bandcamp.com")) return "Bandcamp";
-      if (hostname.includes("toneden.io")) return "Toneden";
-      if (hostname.includes("fanlink") || hostname.includes("linkfire.com") || hostname.includes("feature.fm")) return "Lien externe";
-      return "Lien externe";
+      if (hostname.includes("hypeddit.com")) return { name: "Hypeddit", confirmedFree: true };
+      if (hostname.includes("toneden.io")) return { name: "Toneden", confirmedFree: true };
+      if (hostname.includes("bandcamp.com")) return { name: "Bandcamp", confirmedFree: false };
+      if (hostname.includes("beatport.com")) return { name: "Beatport", confirmedFree: false };
+      if (hostname.includes("fanlink") || hostname.includes("linkfire.com") || hostname.includes("feature.fm")) return { name: "Lien externe", confirmedFree: false };
+      return { name: "Lien externe", confirmedFree: false };
     }
 
     const tracks = rawTracks.map((t) => {
@@ -94,7 +95,8 @@ module.exports = async (req, res) => {
         title: full.title || "Titre indisponible",
         artist: full.user?.username || "Artiste inconnu",
         free: nativelyFree,
-        externalPlatform, // ex: "Hypeddit", "Bandcamp", ou null
+        externalPlatform: externalPlatform?.name || null, // ex: "Hypeddit", "Bandcamp", ou null
+        externalConfirmedFree: externalPlatform?.confirmedFree || false,
         externalUrl: externalPlatform ? purchaseUrl : null,
         permalink: full.permalink_url,
       };
