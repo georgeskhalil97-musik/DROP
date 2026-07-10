@@ -425,7 +425,7 @@ function renderTracks() {
       badgeClass = t.externalPlatform === 'Hypeddit' ? 'badge-hypeddit'
         : t.externalPlatform === 'Bandcamp' ? 'badge-bandcamp'
         : 'badge-external';
-      badgeLabel = `${t.externalPlatform} · Gratuit`;
+      badgeLabel = t.externalConfirmedFree ? `${t.externalPlatform} · Gratuit` : t.externalPlatform;
       buttonHtml = `<a class="dl-btn ext-btn" href="${t.externalUrl}" target="_blank" rel="noopener noreferrer" title="Ouvrir sur ${t.externalPlatform}">↗</a>`;
     } else {
       badgeClass = 'badge-locked';
